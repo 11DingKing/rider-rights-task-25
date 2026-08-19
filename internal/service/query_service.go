@@ -38,9 +38,19 @@ func (s *QueryService) GetItemDetail(ctx context.Context, id string) (*ItemDetai
 	if err != nil {
 		return nil, fmt.Errorf("get escalations: %w", err)
 	}
-	audit, _, err := s.store.ListAudit(ctx, domain.AuditFilter{EntityID: id, PageSize: 100})
-	if err != nil {
-		return nil, fmt.Errorf("list audit: %w", err)
+	var audit []*domain.AuditEntry
+	offset := 0
+	for {
+		page, total, err := s.store.ListAudit(ctx, domain.AuditFilter{EntityID: id, PageSize: domain.DetailAuditPageSize, PageOffset: offset})
+		if err != nil {
+			return nil, fmt.Errorf("list audit: %w", err)
+		}
+		audit = append(audit, page...)
+		next, done := domain.NextDetailAuditPage(offset, len(page), total)
+		if done {
+			break
+		}
+		offset = next
 	}
 	return &ItemDetail{
 		RightsCase:  item,
