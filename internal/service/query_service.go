@@ -41,6 +41,9 @@ func (s *QueryService) GetItemDetail(ctx context.Context, id string) (*ItemDetai
 	var audit []*domain.AuditEntry
 	offset := 0
 	for {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("list audit canceled: %w", err)
+		}
 		page, total, err := s.store.ListAudit(ctx, domain.AuditFilter{EntityID: id, PageSize: domain.DetailAuditPageSize, PageOffset: offset})
 		if err != nil {
 			return nil, fmt.Errorf("list audit: %w", err)
@@ -49,6 +52,9 @@ func (s *QueryService) GetItemDetail(ctx context.Context, id string) (*ItemDetai
 		next, done := domain.NextDetailAuditPage(offset, len(page), total)
 		if done {
 			break
+		}
+		if next <= offset {
+			return nil, fmt.Errorf("list audit pagination did not advance")
 		}
 		offset = next
 	}
